@@ -37,7 +37,8 @@ extension URLSession {
     public func makeURLRequest<T>(
         urlString: String,
         httpMethod: HttpMethod,
-        object: T?) -> URLRequest {
+        object: T?,
+        userAgent: String? = nil) -> URLRequest {
         guard let url = URL(string: urlString) else {
             fatalError("Wrong urlString")
         }
@@ -45,6 +46,9 @@ extension URLSession {
         request.httpMethod = httpMethod.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
+        if let userAgent = userAgent {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        }
         if let object = object {
             guard let jsonData =  try? JSONSerialization.data(withJSONObject: object) else {
                 fatalError("incorrect object")
@@ -56,9 +60,10 @@ extension URLSession {
     
     public func makeURLRequest(
         urlString: String,
-        httpMethod: HttpMethod = .get) -> URLRequest {
+        httpMethod: HttpMethod = .get,
+        userAgent: String? = nil) -> URLRequest {
         let object: String? = nil
-        return makeURLRequest(urlString: urlString, httpMethod: httpMethod, object: object)
+        return makeURLRequest(urlString: urlString, httpMethod: httpMethod, object: object, userAgent: userAgent)
     }
     
     public func excute<T>(
