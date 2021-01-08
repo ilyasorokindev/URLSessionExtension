@@ -10,6 +10,6 @@ final class URLSessionExtensionTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testExample", testExample),
+        ("testExample", testExample)
     ]
 }

@@ -22,23 +22,29 @@ public enum Response<T> {
     case result(model: T)
 }
 
+private enum Constants {
+    static let encoder = JSONEncoder()
+    static let decoder = JSONDecoder()
+}
+
 extension URLSession {
-    
+
     public enum CoreError: Error {
         case unknownError
-        case jsonDecodeError
+        case jsonDecodeError(response: String)
      }
-    
+
     public typealias ResponseMapper<T> = (
         _ data: Data?,
         _ response: URLResponse?,
         _ error: Error?) -> Response<T>
-    
+
     public func makeURLRequest<T>(
         urlString: String,
         httpMethod: HttpMethod,
         object: T?,
-        userAgent: String? = nil) -> URLRequest {
+        userAgent: String? = nil) -> URLRequest
+    where T: Encodable {
         guard let url = URL(string: urlString) else {
             fatalError("Wrong urlString")
         }
@@ -50,14 +56,14 @@ extension URLSession {
             request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }
         if let object = object {
-            guard let jsonData =  try? JSONSerialization.data(withJSONObject: object) else {
+            guard let jsonData =  try? Constants.encoder.encode(object) else {
                 fatalError("incorrect object")
             }
             request.httpBody = jsonData
         }
         return request
     }
-    
+
     public func makeURLRequest(
         urlString: String,
         httpMethod: HttpMethod = .get,
@@ -65,35 +71,32 @@ extension URLSession {
         let object: String? = nil
         return makeURLRequest(urlString: urlString, httpMethod: httpMethod, object: object, userAgent: userAgent)
     }
-    
+
     public func excute<T>(
         request: URLRequest,
         responseMapper: ResponseMapper<T>? = nil,
-        responseClosure: @escaping(_ response: Response<T>) -> Void) -> Void
-    where T: Decodable{
+        responseClosure: @escaping(_ response: Response<T>) -> Void)
+    where T: Decodable {
         let task = self.dataTask(with: request) { data, response, error in
             let map: () -> Response<T> = {
-                if let responseMapper = responseMapper {
-                    return responseMapper(data, response, error)
-                }
                 if let error = error {
                     return Response<T>.error(error: error)
                 }
                 if let data = data {
-                    if let model = try? JSONDecoder().decode(T.self, from: data) {
+                    if let model = try? Constants.decoder.decode(T.self, from: data) {
                         return Response<T>.result(model: model)
                     }
-                    return Response<T>.error(error: CoreError.jsonDecodeError)
+                    return Response<T>.error(error: CoreError.jsonDecodeError(response: String(decoding: data, as: UTF8.self)))
                 }
                 assertionFailure("decoding is incorrect")
                 return Response<T>.error(error: CoreError.unknownError)
             }
-            let value = map()
-            
+            let value: Response<T> = responseMapper?(data, response, error) ?? map()
+
             DispatchQueue.main.async {
                 responseClosure(value)
             }
-            
+
         }
         task.resume()
     }
