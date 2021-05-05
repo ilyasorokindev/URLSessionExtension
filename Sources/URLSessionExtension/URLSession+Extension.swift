@@ -78,6 +78,9 @@ extension URLSession {
         responseClosure: @escaping(_ response: Response<T>) -> Void)
     where T: Decodable {
         let task = self.dataTask(with: request) { data, response, error in
+            if let error = error as NSError?, error.code == NSURLErrorCancelled {
+                return
+            }
             let map: () -> Response<T> = {
                 if let error = error {
                     return Response<T>.error(error: error)
