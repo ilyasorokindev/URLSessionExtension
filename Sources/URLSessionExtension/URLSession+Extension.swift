@@ -28,17 +28,17 @@ private enum Constants {
 }
 
 extension URLSession {
-
+    
     public enum CoreError: Error {
         case unknownError
         case jsonDecodeError(response: String)
-     }
-
+    }
+    
     public typealias ResponseMapper<T> = (
         _ data: Data?,
         _ response: URLResponse?,
         _ error: Error?) -> Response<T>
-
+    
     public func makeURLRequest<T>(
         urlString: String,
         httpMethod: HttpMethod,
@@ -63,7 +63,7 @@ extension URLSession {
         }
         return request
     }
-
+    
     public func makeURLRequest(
         urlString: String,
         httpMethod: HttpMethod = .get,
@@ -71,7 +71,7 @@ extension URLSession {
         let object: String? = nil
         return makeURLRequest(urlString: urlString, httpMethod: httpMethod, object: object, userAgent: userAgent)
     }
-
+    
     public func excute<T>(
         request: URLRequest,
         responseMapper: ResponseMapper<T>? = nil,
@@ -86,20 +86,22 @@ extension URLSession {
                     return Response<T>.error(error: error)
                 }
                 if let data = data {
-                    if let model = try? Constants.decoder.decode(T.self, from: data) {
+                    do {
+                        let model = try Constants.decoder.decode(T.self, from: data)
                         return Response<T>.result(model: model)
+                    } catch let jsonError as NSError {
+                        return Response<T>.error(error: CoreError.jsonDecodeError(response: "JSON decode failed: \(jsonError.localizedDescription)"))
                     }
-                    return Response<T>.error(error: CoreError.jsonDecodeError(response: String(decoding: data, as: UTF8.self)))
                 }
                 assertionFailure("decoding is incorrect")
                 return Response<T>.error(error: CoreError.unknownError)
             }
             let value: Response<T> = responseMapper?(data, response, error) ?? map()
-
+            
             DispatchQueue.main.async {
                 responseClosure(value)
             }
-
+            
         }
         task.resume()
     }
