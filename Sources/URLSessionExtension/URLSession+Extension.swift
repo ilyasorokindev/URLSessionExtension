@@ -72,7 +72,7 @@ extension URLSession {
         return makeURLRequest(urlString: urlString, httpMethod: httpMethod, object: object, userAgent: userAgent)
     }
     
-    public func excute<T>(
+    public func execute<T>(
         request: URLRequest,
         responseMapper: ResponseMapper<T>? = nil,
         responseClosure: @escaping(_ response: Response<T>) -> Void)
